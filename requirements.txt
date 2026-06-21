@@ -1,0 +1,10 @@
+pyyaml
+tensorboard
+librosa
+pystoi
+pesq
+scipy
+soundfile
+tqdm
+onnx
+onnxruntime

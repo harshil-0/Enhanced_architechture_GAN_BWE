@@ -1,0 +1,73 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDEs and editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Datasets (Local storage of audio datasets)
+LJSpeech-1.1/
+wav48_silence_trimmed/
+dummy_dataset/
+NISQA_Corpus/
+*.tar
+*.tar.gz
+*.tar.bz2
+*.zip
+speaker-info.txt
+update.txt
+txt/
+
+# Checkpoints and exported models
+checkpoints/
+*.pth
+*.pt
+*.onnx
+
+# Training runs, logs, and generated metrics
+outputs/
+*.log
+*.csv
+
+# Local manifests
+manifests/
+
+# OS specific files
+.DS_Store
+Thumbs.db

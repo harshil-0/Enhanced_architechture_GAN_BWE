@@ -1,0 +1,106 @@
+# HybridGAN-BWE Default Configuration
+
+# Audio Parameters
+audio:
+  input_sr: 8000        # Narrowband sample rate (Hz)
+  target_sr: 16000      # Wideband target sample rate (Hz)
+  segment_length: 16384 # 1.024 seconds segment at 16kHz (must be divisible by downsampling/upsampling factors)
+  degradation_type: "dynamic" # g711_mu, g711_a, gsm_sim, or none (just resampling)
+
+# Dataset & DataLoader Parameters
+dataset:
+  train_manifest: "manifests/train.json"
+  val_manifest: "manifests/val.json"
+  test_manifest: "manifests/test.json"
+  batch_size: 9
+  num_workers: 4
+  pin_memory: true
+  crop_type: "random"   # random, fixed, or none (for validation/testing)
+
+# Optimization & Hardware Constraints
+train:
+  epochs: 10
+  learning_rate: 0.0002
+  adam_beta1: 0.8
+  adam_beta2: 0.99
+  lr_decay: 0.999
+  gradient_accumulation_steps: 1
+  mixed_precision: true
+  gradient_checkpointing: false
+  grad_clip_val: 10.0
+  save_interval_epochs: 5
+  val_interval_epochs: 1
+  early_stopping_patience: 15
+  resume_checkpoint: "checkpoints/domain_randomization/best_model.pth"
+
+# Logging
+logging:
+  tensorboard_dir: "outputs/tensorboard_randomized"
+  checkpoint_dir: "checkpoints/domain_randomization"
+  csv_log_file: "outputs/train_logs_randomized.csv"
+
+# Model Architecture Controls
+generator:
+  use_waveform_branch: true
+  use_spectral_branch: true
+  use_cross_attention: true
+  
+  # Waveform Encoder
+  waveform_encoder:
+    in_channels: 1
+    channels: 64
+    num_blocks: 4
+    strides: [2, 2, 2] # Downsample by 8 (from 16kHz down to 2kHz frame rate)
+    kernel_sizes: [15, 15, 15]
+    dilations: [1, 2, 4, 8]
+    
+  # Spectral Encoder
+  spectral_encoder:
+    fft_size: 512
+    hop_length: 128    # Hop length of 128 downsamples target_sr to 125 frames/sec.
+    win_length: 512
+    channels: 32
+    num_layers: 4
+    
+  # Cross-Attention
+  attention:
+    dim: 128
+    num_heads: 4
+    
+  # Progressive Decoder
+  decoder:
+    upsample_rates: [2, 2, 2] # Upsample by 8 back to target waveform
+    upsample_kernel_sizes: [16, 16, 16]
+    channels: 64
+    resblock_kernel_sizes: [3, 7, 11]
+    resblock_dilations: [[1, 3, 5], [1, 3, 5], [1, 3, 5]]
+
+# Discriminator Configurations
+discriminator:
+  # Multi-Period Discriminator
+  mpd:
+    periods: [2, 3, 5, 7, 11]
+    channels: 32
+  
+  # Multi-Scale Discriminator
+  msd:
+    scales: [1, 2, 4]
+    channels: 32
+  
+  # Spectral Discriminators
+  spectral:
+    use_magnitude: true
+    use_phase: true
+    fft_sizes: [256, 512, 1024]
+    hop_lengths: [64, 128, 256]
+    win_lengths: [256, 512, 1024]
+    channels: 32
+
+# Loss Weights
+losses:
+  adv_g_weight: 1.0
+  fm_weight: 2.0                # Feature matching loss weight
+  waveform_l1_weight: 100.0     # Time-domain L1 reconstruction loss
+  mr_stft_weight: 15.0          # Multi-Resolution STFT loss weight
+  phase_consistency_weight: 45.0 # Phase loss weight
+  mel_spectrogram_weight: 45.0  # Mel spectrogram loss weight
