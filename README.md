@@ -249,3 +249,10 @@ Ensure your virtual environment is active, then launch either app:
     *Directly upload actual cell phone or Skype audio clips to extend bandwidth.*
 
 *For both apps, you can either drag and drop a WAV file, or write the absolute file path on the server in the text input box.*
+
+---
+
+## 📑 References & Citations
+
+For detailed references of the academic papers (HiFi-GAN, Parallel WaveGAN, etc.), industry standards (G.711, GSM), and datasets (VCTK, NISQA) that inspired this architecture, please refer to [REFERENCES_AND_CITATIONS.md](file:///j:/work/GAN_antigravity/docs/REFERENCES_AND_CITATIONS.md).
+
