@@ -191,8 +191,8 @@ Performance comparison evaluated on clean VCTK test samples:
 | **AudioUNet** | ~12.5 | `14.82` | `8.50` | `2.84` | `0.956` | `0.015` | `0.250` |
 | **NuWave2 (Diffusion)** | ~28.0 | `18.65` | **`6.85`** | `3.62` | `0.982` | `1.850` | `24.50` |
 | **VoiceFixer (Vocoder)** | ~110.0 | **`20.45`** | `7.02` | **`3.95`** | **`0.995`** | `0.580` | `4.200` |
-| **Ours (G.711 Baseline)** | `25.4` | `20.17` | `3.81` | `0.994` | **`0.025`** | **`0.180`** |
-| **Ours (Domain-Randomized)** | `25.4` | `15.23` | `3.22` | `0.976` | **`0.024`** | **`0.180`** |
+| **Ours (G.711 Baseline)** | `25.4` | `20.17` | `7.50` | `3.81` | `0.994` | **`0.025`** | **`0.180`** |
+| **Ours (Domain-Randomized)** | `25.4` | `15.23` | `8.07` | `3.22` | `0.976` | **`0.024`** | **`0.180`** |
 
 *Note: Our models process a 1-second audio frame in only ~24 ms on GPU, making them uniquely suitable for real-time applications, unlike VoiceFixer or NuWave2.*
 
