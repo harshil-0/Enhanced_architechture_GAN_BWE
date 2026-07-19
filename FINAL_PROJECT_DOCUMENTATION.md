@@ -497,6 +497,29 @@ python infer.py --checkpoint checkpoints/lightweight/best_model.pth --export_tor
 * **App 2: Direct Speech Restoration (`app_upsample.py`, Port 7862):** Directly upsamples real telephone audio clips to wideband speech.
 * **Dynamic Hardware Auto-Detection:** Automatically routes model inference onto GPU (CUDA) if available (`device = torch.device("cuda" if torch.cuda.is_available() else "cpu")`) with input tensor device mapping (`.to(device)`).
 
+## 3. Hugging Face Spaces Deployment
+We have constructed a standalone, 100% self-contained deployment package under `hf_space/` to publish the speech bandwidth extension app as a live service on Hugging Face Spaces:
+
+### A. Repository Architecture
+The `hf_space/` directory encapsulates all files needed to boot independently:
+* **`app.py`**: Gradio application entrypoint containing custom routing, hardware shims, and robust audio handlers.
+* **`requirements.txt`**: Minimal, pinned dependencies optimized for CPU/GPU serving: `gradio>=5.0.0`, `torch`, `torchaudio`, `librosa`, `soundfile`, `pyyaml`, `scipy`, `numpy`, `huggingface_hub<0.24.0` (prevents deprecated module import errors).
+* **`README.md`**: Space configuration frontmatter designating the Gradio SDK version (`5.9.0`) and application metadata.
+* **Architecture files**: Self-contained copies of `models/`, `modules/`, `utils/`, and `config.yaml` to ensure zero external file fetch requests on boot.
+
+### B. Core Compatibility Workarounds & Shims
+To bypass common ASGI server, Pydantic validation, and framework conflicts in Hugging Face's container, the following monkey-patches are implemented at the very top of `app.py`:
+1. **`HfFolder` Deprecation Bypass**: Dynamically injects a mock `HfFolder` class to prevent older versions of `librosa` or `gradio` from throwing `ImportError: cannot import name 'HfFolder' from 'huggingface_hub'`.
+2. **JSON Schema Boolean validator patch**: Intercepts boolean schemas in `gradio_client` parsing (`gradio_client.utils.get_type`) to prevent `TypeError: argument of type 'bool' is not iterable` errors when generating OpenAPI specifications with Pydantic 2.10+.
+
+### C. ZeroGPU Hardware Support
+To support both CPU-only basic spaces and Hugging Face **ZeroGPU** (shared GPU nodes):
+1. **Startup Model CPU Allocation**: The model is loaded initially on the CPU (`device = torch.device("cpu")`) to pass ZeroGPU's startup validation checks.
+2. **JIT GPU Migration via `@spaces.GPU`**: The inference function is decorated with `@spaces.GPU`. On function call, the model is migrated to GPU (`generator.to("cuda")`), runs inference, and is moved back to CPU (`generator.to("cpu")`) to release resources immediately.
+
+### D. Audio Resampling & Sequence Padding
+* **16 kHz Target Resampling**: The model is length-preserving and expects inputs resampled to the target sample rate ($16\text{ kHz}$). The application upsamples the input, pads it to a multiple of 256 for convolutional alignment, and crops the output back to the original duration. This prevents audio squeezing (double-speed playback).
+
 ***
 
 # 15. Repository Structure
@@ -505,6 +528,15 @@ python infer.py --checkpoint checkpoints/lightweight/best_model.pth --export_tor
 HybridGAN-BWE/
 ├── configs/
 │   └── config.yaml                     # Central YAML configuration file
+├── hf_space/
+│   ├── app.py                          # Gradio Space entrypoint with shims
+│   ├── config.yaml                     # Model configuration copy
+│   ├── best_model.pth                  # Lightweight model weights copy
+│   ├── README.md                       # Hugging Face Space config metadata
+│   ├── requirements.txt                # Spaces minimal dependencies list
+│   ├── models/                         # Generator and Discriminator architecture
+│   ├── modules/                        # Custom sub-modules
+│   └── utils/                          # Audio & Config loader utilities
 ├── datasets/
 │   ├── dataset.py                      # Dynamic paired audio loading & online corruption
 │   └── manifest.py                     # Dataset index scanner & manifest builder
