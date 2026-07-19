@@ -1,6 +1,10 @@
 import os
 import sys
 import yaml
+
+# Allow file-based tracking store (mlruns) in MLflow 3.x
+os.environ["MLFLOW_ALLOW_FILE_STORE"] = "true"
+
 import mlflow
 import torch
 import torchaudio
@@ -23,6 +27,9 @@ class MLflowTracker:
         self.tracking_uri = tracking_uri
         self.run_name = run_name
         self.active_run = None
+
+        # Allow file-based tracking store (mlruns) in MLflow 3.x
+        os.environ["MLFLOW_ALLOW_FILE_STORE"] = "true"
 
         # Configure tracking URI
         mlflow.set_tracking_uri(self.tracking_uri)
