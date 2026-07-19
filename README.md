@@ -263,6 +263,28 @@ Ensure your virtual environment is active, then launch either app:
 
 *For both apps, you can either drag and drop a WAV file, or write the absolute file path on the server in the text input box.*
 
+### D. MLflow Experiment Tracking & MLOps
+To train with automatic MLflow experiment tracking, parameter logging, and artifact uploads:
+
+1. **Install MLflow**:
+   ```bash
+   pip install mlflow
+   ```
+2. **Start MLflow UI Server** (Port `5000`):
+   ```bash
+   python -m mlops.start_ui
+   ```
+   Open **[http://127.0.0.1:5000](http://127.0.0.1:5000)** in your browser.
+3. **Train with MLflow Tracking**:
+   ```bash
+   python -m mlops.train --config mlops/config.yaml --seed 42
+   ```
+4. **Evaluate & Log Test Metrics to MLflow**:
+   ```bash
+   python -m mlops.evaluate_mlflow --checkpoint checkpoints/lightweight/best_model.pth --num_samples 200
+   ```
+*For complete MLOps documentation, check out [mlops/README.md](file:///j:/work/GAN_antigravity/mlops/README.md).*
+
 ---
 
 ## 📑 References & Citations
