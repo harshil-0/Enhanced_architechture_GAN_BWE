@@ -450,11 +450,28 @@ Performance comparison evaluated against classical DSP and state-of-the-art neur
 
 # 13. MLOps, Logging & Configuration Management
 
-* **Central Configuration (`configs/config.yaml`):** Object-oriented YAML parsing via `utils/config.py`. Controls loss weights, kernel sizes, and learning rates.
-* **CSV Metric Logging:** Real-time per-epoch logging to `outputs/train_logs_lightweight.csv`.
+The project implements a complete, non-breaking **MLflow Experiment Tracking and MLOps Infrastructure** organized inside a dedicated `mlops/` directory:
+
+## 1. Centralized MLflow Experiment Tracking (`mlops/tracker.py`)
+* **Experiment Organization:** All training and evaluation runs are grouped under the experiment name `"HybridGAN-BWE"` and logged locally under `mlruns/`.
+* **Automatic Hyperparameter Logging:** Logs all `config.yaml` parameters (audio segment length, sampling rates, degradation types, batch size, learning rates, loss weights) alongside optimizer (`AdamW`), scheduler (`ExponentialLR`), and random seed ($42$).
+* **System Environment Versioning:** Logs exact versions of `python`, `torch`, `torchaudio`, `librosa`, `scipy`, `numpy`, `gradio`, and `mlflow` to guarantee 100% environment reproducibility.
+* **Per-Epoch Metric Tracking:** Automatically records generator total loss (`loss_g`), discriminator loss (`loss_d`), STFT loss, phase loss, Mel loss, feature matching loss, learning rate (`lr_g`), and validation losses (`val_loss`, `val_stft`, `val_phase`, `val_mel`) across training epochs.
+* **Artifact Logging:** Automatically uploads model checkpoints (`best_model.pth`), configuration files (`config.yaml`), test metric reports (`.md`), and spectrogram plots (`.png`) to MLflow artifact storage.
+
+## 2. Deterministic Reproducibility Seed Manager (`mlops/seed.py`)
+Enforces strict random seeds across Python `random`, NumPy (`np.random`), PyTorch CPU (`torch.manual_seed`), PyTorch CUDA (`torch.cuda.manual_seed_all`), and sets `torch.backends.cudnn.deterministic = True`.
+
+## 3. Modular MLOps Execution Pipeline
+* **`mlops/train.py`**: Training bootstrapper that initializes `MLflowTracker`, loads dataloaders, runs training, and auto-logs all metrics and checkpoints.
+* **`mlops/trainer_mlflow.py`**: Non-breaking subclass of `Trainer` extending metric and artifact logging.
+* **`mlops/evaluate_mlflow.py`**: Test-set evaluator computing PESQ, STOI, SI-SDR, LSD, and RTF, logging metrics to MLflow and saving Markdown reports as artifacts.
+* **`mlops/start_ui.py`**: Helper script to launch the interactive MLflow web UI server on port `5000` (`http://127.0.0.1:5000`).
+
+## 4. Multi-Backend Logging
 * **TensorBoard Integration:** Event logs written to `outputs/tensorboard_lightweight/`.
+* **CSV Metric Logging:** Real-time per-epoch logging to `outputs/train_logs_lightweight.csv`.
 * **Checkpoint Management:** Model weights saved per epoch (`checkpoints/lightweight/checkpoint_epoch_5.pth`) and updated on validation best (`checkpoints/lightweight/best_model.pth`).
-* **Git Repository Isolation:** `.gitignore` excludes dataset binaries, VRAM checkpoints, and `.venv`.
 
 ***
 
@@ -496,6 +513,15 @@ HybridGAN-BWE/
 ├── losses/
 │   ├── adversarial.py                  # LSGAN adversarial & Feature Matching losses
 │   └── spectral.py                     # Multi-Resolution STFT, Mel, and Phase losses
+├── mlops/
+│   ├── __init__.py                     # Package init for MLOps module
+│   ├── config.yaml                     # MLOps reference configuration file
+│   ├── evaluate_mlflow.py              # MLflow evaluation runner
+│   ├── seed.py                         # Deterministic random seed manager
+│   ├── start_ui.py                     # MLflow web UI launcher helper
+│   ├── tracker.py                      # Centralized MLflow tracker class
+│   ├── train.py                        # MLflow training bootstrapper
+│   └── trainer_mlflow.py               # MLflow-wrapped Trainer extension
 ├── models/
 │   ├── generator.py                    # Modular Generator core wrapper
 │   └── discriminator.py                # MPD, MSD, Magnitude, Phase discriminators
