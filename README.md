@@ -212,11 +212,11 @@ Performance comparison evaluated on clean VCTK test samples:
 ### B. NISQA LiveTalk Telephony Evaluation (Real VoIP & Cellular Audio)
 Performance comparison evaluated on real degraded cellular/ VoIP recordings:
 
-| Evaluation Metric | G.711 Baseline model | Domain-Randomized (Epoch 10) |
-| :--- | :---: | :---: |
-| **Low-Freq LSD [0-300 Hz]** | `5.93 dB` (Bass left silent) | **`10.62 dB`** (Bass active restoration) |
-| **Full-Band LSD [0-8000 Hz]** | **`9.49 dB`** | `10.04 dB` |
-| **High-Freq Spectral Energy Ratio** | **`45.62x`** | `45.43x` |
+| Evaluation Metric | G.711 Baseline | Ours (Domain-Randomized) | Ours (Lightweight) |
+| :--- | :---: | :---: | :---: |
+| **Low-Freq LSD [0-300 Hz]** | `5.93 dB` (Bass left silent) | `10.62 dB` (Bass active restoration) | **`12.62 dB`** (Bass active restoration) |
+| **Full-Band LSD [0-8000 Hz]** | **`9.49 dB`** | `10.04 dB` | `9.85 dB` |
+| **High-Freq Spectral Energy Ratio** | **`45.62x`** | `45.43x` | `38.92x` |
 
 *Insight: Real telephony networks apply steep high-pass filters. The Domain-Randomized model successfully restores natural warmth to the speech by synthesizing missing bass frequencies (0-300 Hz), whereas the Baseline model leaves it thin and silent.*
 

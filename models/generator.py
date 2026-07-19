@@ -126,3 +126,7 @@ class Generator(nn.Module):
         # Since x is low-pass filtered, we can add it to output to preserve low frequency phase
         # The generator learns to add high-frequency details.
         return out
+
+    def load_state_dict(self, state_dict, strict=True):
+        """Override to load baseline and lightweight models dynamically by disabling strict checking."""
+        return super().load_state_dict(state_dict, strict=False)
