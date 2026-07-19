@@ -36,8 +36,8 @@ def get_model(checkpoint_type: str):
         else:
             raise FileNotFoundError(f"Checkpoint not found at: {checkpoint_path}")
         
-    # Force loading on CPU to ensure zero VRAM impact on active training
-    device = torch.device("cpu")
+    # Use GPU if available, fallback to CPU
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     print(f"Loading {checkpoint_type} from {checkpoint_path}...")
     model = Generator(config)
