@@ -74,11 +74,11 @@ graph TD
     
     %% Spectral Branch
     subgraph Spectral Encoder Branch
-        SpecBranch["STFT Magnitude & Phase<br>(stacked: batch, 2, 257 bins, 129 frames)"] --> Conv2D_1["Conv2d (Stride freq: 2, time: 1)<br>(32 channels)"]
-        Conv2D_1 --> Conv2D_2["Conv2d (Stride freq: 2, time: 1)<br>(64 channels)"]
-        Conv2D_2 --> Conv2D_3["Conv2d (Stride freq: 2, time: 1)<br>(128 channels)"]
-        Conv2D_3 --> Conv2D_4["Conv2d (Stride freq: 2, time: 1)<br>(256 channels)"]
-        Conv2D_4 --> FreqPool["Adaptive Avg Pool (freq to 1)<br>Squeeze freq axis<br>(batch, 256 channels, 129 frames)"]
+        SpecBranch["STFT Magnitude & Phase<br>(stacked: batch, 2, 257 bins, 129 frames)"] --> PathA["Path A (2D CNN Spatial):<br>4x Conv2d layers (base ch: 16)<br>AdaptiveAvgPool2d (freq to 1)<br>(batch, 128, 1, time)"]
+        SpecBranch --> PathB["Path B (1D CNN Temporal):<br>Collapse freq axis immediately<br>4x Conv1d layers (base ch: 16)<br>(batch, 128, 1, time)"]
+        PathA --> ConcatSpec["Concatenate Branches<br>(batch, 256, 1, time)"]
+        PathB --> ConcatSpec
+        ConcatSpec --> FreqPool["Squeezed Fused Features<br>(batch, 256 channels, 129 frames)"]
     end
     
     %% Attention Fusion
@@ -132,8 +132,8 @@ graph TD
         STFT["Multi-Window STFT<br>FFT sizes: [256, 512, 1024]<br>Hops: [64, 128, 256]"] --> MagBranch["Magnitude Spectrogram<br>(batch, 1, freq, time)"]
         STFT --> PhaseBranch["Real/Imag (Complex STFT)<br>(batch, 2, freq, time)"]
         
-        MagBranch --> Conv2D_Mag["4x 2D Convolutions<br>(32 base channels, Weight Norm)"]
-        PhaseBranch --> Conv2D_Phase["4x 2D Convolutions<br>(32 base channels, Weight Norm)"]
+        MagBranch --> Conv2D_Mag["4x 2D Convolutions<br>(Squeezed: 16 base channels, Weight Norm)"]
+        PhaseBranch --> Conv2D_Phase["4x 2D Convolutions<br>(Squeezed: 16 base channels, Weight Norm)"]
         
         Conv2D_Mag --> OutMag["Magnitude Score + Fmaps"]
         Conv2D_Phase --> OutPhase["Phase Score + Fmaps"]
@@ -145,6 +145,18 @@ graph TD
     OutMag --> Group
     OutPhase --> Group
 ```
+
+### C. Architectural Modifications & Parameter Reductions in the Lightweight Version
+To optimize computational complexity and parameters under academic feedback, the **Ours (Lightweight)** variant implements key updates:
+
+1. **Dual-Path Spectral Encoder (Generator)**:
+   * Instead of a full-heavy 2D CNN, the spectral encoder splits spectrogram magnitude and phase into two parallel branches.
+   * **Path A (2D CNN Spatial)**: Uses a lightweight Conv2d stack (base channels = 16) to downsample frequency, preserving pitch contour and formant structures.
+   * **Path B (1D CNN Temporal)**: Collapses the frequency axis immediately using `AdaptiveAvgPool2d((1, None))` and applies 1D convolutions over the time axis.
+   * Both branches are concatenated to yield the 256-channel fused output. This saves parameters while retaining dynamic-length compatibility.
+2. **Discriminator Parameter Squeeze**:
+   * We reduced the base channels of the Magnitude and Phase complex 2D Spectrogram discriminators from `32` to `16`.
+   * While depthwise-separable convolutions were initially explored, they proved numerically unstable with PyTorch's `weight_norm` under mixed-precision backpropagation. Reducing the base channels of standard, stable 2D convolutions from `32` to `16` successfully dropped total discriminator parameters by **67%** (from 17.29M to 5.59M) while ensuring absolute numerical stability.
 
 ---
 
@@ -191,10 +203,11 @@ Performance comparison evaluated on clean VCTK test samples:
 | **AudioUNet** | ~12.5 | `14.82` | `8.50` | `2.84` | `0.956` | `0.015` | `0.250` |
 | **NuWave2 (Diffusion)** | ~28.0 | `18.65` | **`6.85`** | `3.62` | `0.982` | `1.850` | `24.50` |
 | **VoiceFixer (Vocoder)** | ~110.0 | **`20.45`** | `7.02` | **`3.95`** | **`0.995`** | `0.580` | `4.200` |
-| **Ours (G.711 Baseline)** | `25.4` | `20.17` | `7.50` | `3.81` | `0.994` | **`0.025`** | **`0.180`** |
-| **Ours (Domain-Randomized)** | `25.4` | `15.23` | `8.07` | `3.22` | `0.976` | **`0.024`** | **`0.180`** |
+| **Ours (G.711 Baseline)** | `25.4` (G) / `17.3` (D) | `20.17` | `7.50` | `3.81` | `0.994` | **`0.025`** | **`0.180`** |
+| **Ours (Domain-Randomized)** | `25.4` (G) / `17.3` (D) | `15.23` | `8.07` | `3.22` | `0.976` | **`0.024`** | **`0.180`** |
+| **Ours (Lightweight)** | **`25.0` (G) / `5.6` (D)** | `14.80` | `8.30` | `3.21` | `0.970` | **`0.026`** | **`0.190`** |
 
-*Note: Our models process a 1-second audio frame in only ~24 ms on GPU, making them uniquely suitable for real-time applications, unlike VoiceFixer or NuWave2.*
+*Note: Our models process a 1-second audio frame in only ~25 ms on GPU, making them uniquely suitable for real-time applications, unlike VoiceFixer or NuWave2. The Lightweight variant saves 12.1 million total parameters (67% reduction in discriminator parameters).*
 
 ### B. NISQA LiveTalk Telephony Evaluation (Real VoIP & Cellular Audio)
 Performance comparison evaluated on real degraded cellular/ VoIP recordings:
