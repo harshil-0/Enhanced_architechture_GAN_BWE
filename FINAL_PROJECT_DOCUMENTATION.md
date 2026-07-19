@@ -198,45 +198,57 @@ During online training (`degradation_type: "dynamic"`):
 
 # 7. Model Architecture
 
+# 7. Model Architecture
+
+The system implements a Modular Hybrid Generative Adversarial Network comprising a hybrid Time-Frequency Generator and a Composite Multi-Discriminator Group.
+
+## 1. Modular Generator (`models/generator.py`)
+The generator processes the time-domain waveform and STFT spectrogram representations of band-limited audio in parallel, fusing features across time and frequency via multi-head cross-attention.
+
 ```mermaid
 graph TD
-    InputWav["Narrowband Audio (16 kHz)<br>(batch, 1, 16384)"] --> WaveBranch
+    %% Input
+    InputWav["Narrowband Audio (8 kHz)<br>Resampled to 16 kHz<br>(batch, 1, 16384)"] --> WaveBranch
     InputWav --> SpecBranch
     
+    %% Waveform Branch
     subgraph Waveform Encoder Branch
-        WaveBranch["1D Conv Input (64 ch)"] --> Down1["Conv1d Down (Stride 2) + ResBlock1D (128 ch)"]
-        Down1 --> Down2["Conv1d Down (Stride 2) + ResBlock1D (256 ch)"]
-        Down2 --> Down3["Conv1d Down (Stride 2) + ResBlock1D (512 ch)"]
+        WaveBranch["1D Convolution Input<br>(64 channels)"] --> Down1["Conv1d Downsample (Stride: 2) + ResBlock1D<br>(128 channels)"]
+        Down1 --> Down2["Conv1d Downsample (Stride: 2) + ResBlock1D<br>(256 channels)"]
+        Down2 --> Down3["Conv1d Downsample (Stride: 2) + ResBlock1D<br>(512 channels, 2048 frames)"]
     end
     
-    subgraph Dual-Path Spectral Encoder Branch
-        SpecBranch["STFT Mag & Phase (batch, 2, 257, 129)"] --> PathA["Path A (2D Spatial): 4x Conv2d (base 16) -> (batch, 128, 1, time)"]
-        SpecBranch --> PathB["Path B (1D Temporal): Freq Pool -> 3x Conv1d -> (batch, 128, 1, time)"]
-        PathA --> ConcatSpec["Concat Paths -> (batch, 256, 1, time)"]
+    %% Spectral Branch
+    subgraph Spectral Encoder Branch
+        SpecBranch["STFT Magnitude & Phase<br>(stacked: batch, 2, 257 bins, 129 frames)"] --> PathA["Path A (2D CNN Spatial):<br>4x Conv2d layers (base ch: 16)<br>AdaptiveAvgPool2d (freq to 1)<br>(batch, 128, 1, time)"]
+        SpecBranch --> PathB["Path B (1D CNN Temporal):<br>Collapse freq axis immediately<br>4x Conv1d layers (base ch: 16)<br>(batch, 128, 1, time)"]
+        PathA --> ConcatSpec["Concatenate Branches<br>(batch, 256, 1, time)"]
         PathB --> ConcatSpec
+        ConcatSpec --> FreqPool["Squeezed Fused Features<br>(batch, 256 channels, 129 frames)"]
     end
     
+    %% Attention Fusion
     Down3 --> AttnBlock
-    ConcatSpec --> InterpSpec["Linear Time Interpolation (to 2048 frames)"]
+    FreqPool --> InterpSpec["Linear Time Interpolation<br>(from 129 to 2048 frames)"]
     InterpSpec --> AttnBlock
     
     subgraph Cross-Attention Fusion Block
-        AttnBlock["Multi-Head Cross-Attention<br>Q: Waveform, K/V: Spectral<br>(dim: 128, heads: 4)"] --> AddNorm["LayerNorm + Residual Connection"]
+        AttnBlock["Multi-Head Cross-Attention<br>Query: Waveform Features<br>Keys/Values: Spectral Features<br>(dim: 128, heads: 4)"] --> AddNorm["LayerNorm + Residual Connection"]
     end
     
-    AddNorm --> DecIn["Conv1D Proj (512 ch)"]
+    %% Decoder
+    AddNorm --> DecIn["Conv1D (Proj: 512 channels)"]
     
     subgraph Progressive Upsampling Decoder
-        DecIn --> Up1["ConvTranspose1D (Up 2) + ResBlocks1D (256 ch)"]
-        Up1 --> Up2["ConvTranspose1D (Up 2) + ResBlocks1D (128 ch)"]
-        Up2 --> Up3["ConvTranspose1D (Up 2) + ResBlocks1D (64 ch)"]
-        Up3 --> ConvOut["Conv1D Out + Tanh Output"]
+        DecIn --> Up1["ConvTranspose1D (Upsample: 2) + parallel ResBlocks1D<br>(256 channels)"]
+        Up1 --> Up2["ConvTranspose1D (Upsample: 2) + parallel ResBlocks1D<br>(128 channels)"]
+        Up2 --> Up3["ConvTranspose1D (Upsample: 2) + parallel ResBlocks1D<br>(64 channels)"]
+        Up3 --> ConvOut["Conv1D Out + Tanh"]
     end
     
-    ConvOut --> OutputWav["Enhanced Wideband Audio (16 kHz)"]
+    %% Output
+    ConvOut --> OutputWav["Enhanced Wideband Audio (16 kHz)<br>(batch, 1, 16384)"]
 ```
-
-## 1. Modular Generator (`models/generator.py`)
 
 ### A. Waveform Encoder (`modules/waveform_branch.py`)
 * Downsamples time resolution by $8\times$ (strides: `[2, 2, 2]`) using 1D convolutions ($64 \to 128 \to 256 \to 512$ channels).
@@ -259,7 +271,49 @@ Processes STFT magnitude and phase ($N_{fft}=512$, $hop=128$, $win=512$, input s
 * Uses parallel HiFi-GAN ResBlocks (kernel sizes: `[3, 7, 11]`, dilations: `[[1, 3, 5], [1, 3, 5], [1, 3, 5]]`).
 * Final 1D convolution with `Tanh` activation outputs wideband audio $\hat{y}$.
 
+---
+
 ## 2. Multi-Discriminator Group (`models/discriminator.py`)
+Enforces structural, harmonic, and phase fidelity in both time and frequency domains using four distinct discriminator types.
+
+```mermaid
+graph TD
+    %% Input
+    InputAudio["Audio Waveform (16 kHz)<br>(batch, 1, 16384)"] --> MPD
+    InputAudio --> MSD
+    InputAudio --> STFT
+    
+    %% MPD
+    subgraph MPD_Group ["Multi-Period Discriminator (MPD)"]
+        MPD["Periods: [2, 3, 5, 7, 11]"] --> Reshape2D["Reshape 1D Wave to 2D Grid<br>(height, width=Period)"]
+        Reshape2D --> Conv2D_P["5x 2D Convolutions (Stride height: 3, width: 1)<br>Weight Normalization"]
+        Conv2D_P --> OutP["Real/Fake Score + Fmaps"]
+    end
+    
+    %% MSD
+    subgraph MSD_Group ["Multi-Scale Discriminator (MSD)"]
+        MSD["Scales: [1, 2, 4]<br>(AvgPool1d Downsampling)"] --> Conv1D_S["6x 1D Grouped Convolutions<br>Spectral Norm (Scale 1)<br>Weight Norm (Scales 2, 4)"]
+        Conv1D_S --> OutS["Real/Fake Score + Fmaps"]
+    end
+    
+    %% STFT Conversion
+    subgraph Spectral_Group ["Spectral Discriminators"]
+        STFT["Multi-Window STFT<br>FFT sizes: [256, 512, 1024]<br>Hops: [64, 128, 256]"] --> MagBranch["Magnitude Spectrogram<br>(batch, 1, freq, time)"]
+        STFT --> PhaseBranch["Real/Imag (Complex STFT)<br>(batch, 2, freq, time)"]
+        
+        MagBranch --> Conv2D_Mag["4x 2D Convolutions<br>(Squeezed: 16 base channels, Weight Norm)"]
+        PhaseBranch --> Conv2D_Phase["4x 2D Convolutions<br>(Squeezed: 16 base channels, Weight Norm)"]
+        
+        Conv2D_Mag --> OutMag["Magnitude Score + Fmaps"]
+        Conv2D_Phase --> OutPhase["Phase Score + Fmaps"]
+    end
+    
+    %% Group Output
+    OutP --> Group["Discriminator Group Output<br>(Scores & Feature Maps)"]
+    OutS --> Group
+    OutMag --> Group
+    OutPhase --> Group
+```
 
 ### A. Multi-Period Discriminator (MPD)
 5 sub-discriminators reshaping 1D audio into 2D matrices of period widths $p \in \{2, 3, 5, 7, 11\}$. Standard 2D convolutions with `weight_norm` capture harmonic periodicity.
@@ -271,7 +325,7 @@ Processes STFT magnitude and phase ($N_{fft}=512$, $hop=128$, $win=512$, input s
 Operates on 2D STFT spectrograms across 3 window resolutions ($N_{fft} \in \{256, 512, 1024\}$, hops $\{64, 128, 256\}$):
 * **Magnitude Discriminator:** Evaluates log-magnitude spectrograms.
 * **Phase Discriminator:** Evaluates stacked Real & Imaginary complex STFT matrices.
-* **Lightweight Optimization:** Base channels reduced from $32$ to $16$, cutting parameters by **67%** while maintaining standard 2D convolution weight normalization stability.
+* **Lightweight Optimization:** Base channels reduced from $32$ to $16$, cutting parameters by **67%** (from $17.29\text{M}$ to $5.59\text{M}$) while maintaining standard 2D convolution weight normalization stability.
 
 ***
 
