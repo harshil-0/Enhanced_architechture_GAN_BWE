@@ -77,7 +77,7 @@ def process_upsampling(audio_path: str, audio_path_text: str, model_type: str):
         wav_16k = pad_to_multiple(wav_16k, 256)
         
     # 2. Model Inference
-    input_tensor = wav_16k.unsqueeze(0)  # shape (1, 1, samples)
+    input_tensor = wav_16k.unsqueeze(0).to(device)  # shape (1, 1, samples)
     with torch.no_grad():
         enhanced_tensor = model(input_tensor)
         enhanced_wav = enhanced_tensor.squeeze(0).cpu()[:, :wav_16k.shape[-1]]

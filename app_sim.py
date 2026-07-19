@@ -91,7 +91,7 @@ def process_end_to_end(audio_path: str, audio_path_text: str, degradation_type: 
     wav_degraded_padded = pad_to_multiple(wav_degraded, 256)
     
     # 3. Model Inference
-    input_tensor = wav_degraded_padded.unsqueeze(0)  # shape (1, 1, samples)
+    input_tensor = wav_degraded_padded.unsqueeze(0).to(device)  # shape (1, 1, samples)
     with torch.no_grad():
         enhanced_tensor = model(input_tensor)
         enhanced_wav = enhanced_tensor.squeeze(0).cpu()[:, :wav_degraded.shape[-1]]
