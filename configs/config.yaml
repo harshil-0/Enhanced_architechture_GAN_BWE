@@ -31,13 +31,13 @@ train:
   save_interval_epochs: 5
   val_interval_epochs: 1
   early_stopping_patience: 15
-  resume_checkpoint: "checkpoints/domain_randomization/best_model.pth"
+  resume_checkpoint: "checkpoints/lightweight/best_model.pth"
 
 # Logging
 logging:
-  tensorboard_dir: "outputs/tensorboard_randomized"
-  checkpoint_dir: "checkpoints/domain_randomization"
-  csv_log_file: "outputs/train_logs_randomized.csv"
+  tensorboard_dir: "outputs/tensorboard_lightweight"
+  checkpoint_dir: "checkpoints/lightweight"
+  csv_log_file: "outputs/train_logs_lightweight.csv"
 
 # Model Architecture Controls
 generator:
@@ -94,7 +94,7 @@ discriminator:
     fft_sizes: [256, 512, 1024]
     hop_lengths: [64, 128, 256]
     win_lengths: [256, 512, 1024]
-    channels: 32
+    channels: 16
 
 # Loss Weights
 losses:

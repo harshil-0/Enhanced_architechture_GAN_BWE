@@ -13,9 +13,10 @@ The table below summarizes the performance of our model against traditional DSP 
 | **Sinc Interpolation** | DSP Baseline | 0.0 | `-5.20` | `10.84` | `2.15` | `0.925` | `<0.001` | `<0.001` | **Yes** |
 | **AudioUNet** | CNN | ~12.5 | `14.82` | `8.50` | `2.84` | `0.956` | `0.015` | `0.250` | **Yes** |
 | **NuWave2** | Diffusion | ~28.0 | `18.65` | **`6.85`** | `3.62` | `0.982` | `1.850` | `24.50` | **No** |
-| **VoiceFixer** | Neural Vocoder | ~110.0 | **`20.45`** | `7.02` | **`3.95`** | **`0.995`** | `0.580` | `4.200` | **No** (High CPU Latency) |
-| **HybridGAN-BWE (Ours - Baseline)** | Hybrid GAN | `25.4` | `20.17` | `7.50` | `3.81` | `0.994` | **`0.025`** | **`0.180`** | **Yes** (40x GPU / 5.5x CPU) |
-| **HybridGAN-BWE (Ours - Randomized)** | Hybrid GAN | `25.4` | `15.23` | `8.07` | `3.22` | `0.976` | **`0.024`** | **`0.180`** | **Yes** (42x GPU / 5.5x CPU) |
+| **VoiceFixer** | Neural Vocoder | ~110.0 | **`20.45`** | `7.02` | **`3.95`** | **`0.995`** | `0.580` | `4.200` | **No** |
+| **HybridGAN-BWE (Ours - Baseline)** | Hybrid GAN | `25.4` (G) / `17.3` (D) | `20.17` | `7.50` | `3.81` | `0.994` | **`0.025`** | **`0.180`** | **Yes** (40x GPU) |
+| **HybridGAN-BWE (Ours - Randomized)** | Hybrid GAN | `25.4` (G) / `17.3` (D) | `15.23` | `8.07` | `3.22` | `0.976` | **`0.024`** | **`0.180`** | **Yes** (42x GPU) |
+| **HybridGAN-BWE (Ours - Lightweight)** | Hybrid GAN | **`25.0` (G) / `5.6` (D)** | `14.80` | `8.30` | `3.21` | `0.970` | **`0.026`** | **`0.190`** | **Yes** (38x GPU) |
 
 ---
 
