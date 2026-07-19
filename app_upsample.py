@@ -55,6 +55,7 @@ def process_upsampling(audio_path: str, audio_path_text: str, model_type: str):
         
     try:
         model, config = get_model(model_type)
+        device = next(model.parameters()).device
     except Exception as e:
         return None, None, f"Error loading checkpoint: {str(e)}"
         

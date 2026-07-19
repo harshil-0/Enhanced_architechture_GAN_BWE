@@ -56,6 +56,7 @@ def process_end_to_end(audio_path: str, audio_path_text: str, degradation_type: 
         
     try:
         model, config = get_model(model_type)
+        device = next(model.parameters()).device
     except Exception as e:
         return None, None, None, f"Error loading checkpoint: {str(e)}"
         
