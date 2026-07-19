@@ -22,6 +22,8 @@ def get_model(checkpoint_type: str):
     
     if checkpoint_type == "Baseline G.711 Model":
         checkpoint_path = "checkpoints/best_model.pth"
+    elif checkpoint_type == "Ours - Lightweight Model":
+        checkpoint_path = "checkpoints/lightweight/best_model.pth"
     else:
         checkpoint_path = "checkpoints/domain_randomization/best_model.pth"
         
@@ -151,8 +153,8 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="rose", neutral_hue="slate"), cs
             t2_input_file = gr.Audio(label="Upload Narrowband/Telephone Audio File", type="filepath")
             t2_input_path = gr.Textbox(label="Or Enter Absolute File Path on Server (Alternative to upload)", placeholder="e.g. C:\\path\\to\\audio.wav")
             t2_model_type = gr.Dropdown(
-                choices=["Domain-Randomized Model", "Baseline G.711 Model"],
-                value="Domain-Randomized Model",
+                choices=["Ours - Lightweight Model", "Domain-Randomized Model", "Baseline G.711 Model"],
+                value="Ours - Lightweight Model",
                 label="Select BWE Model Checkpoint"
             )
             t2_submit = gr.Button("Perform Bandwidth Extension", variant="primary", elem_classes="primary-button")

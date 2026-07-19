@@ -23,6 +23,8 @@ def get_model(checkpoint_type: str):
     
     if checkpoint_type == "Baseline G.711 Model":
         checkpoint_path = "checkpoints/best_model.pth"
+    elif checkpoint_type == "Ours - Lightweight Model":
+        checkpoint_path = "checkpoints/lightweight/best_model.pth"
     else:
         checkpoint_path = "checkpoints/domain_randomization/best_model.pth"
         
@@ -179,8 +181,8 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="rose", neutral_hue="slate"), cs
                 label="Select Telephone degradation type"
             )
             t1_model_type = gr.Dropdown(
-                choices=["Domain-Randomized Model", "Baseline G.711 Model"],
-                value="Domain-Randomized Model",
+                choices=["Ours - Lightweight Model", "Domain-Randomized Model", "Baseline G.711 Model"],
+                value="Ours - Lightweight Model",
                 label="Select BWE Model Checkpoint"
             )
             t1_submit = gr.Button("Downsample & Reconstruct", variant="primary", elem_classes="primary-button")
